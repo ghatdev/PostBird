@@ -9,7 +9,7 @@ import (
 )
 
 // Info struct
-// PostBird 에서 사용될 내용
+// PostBird 에서 사용될 값들
 type Info struct {
 	BindPort      uint
 	BindAddress   string
@@ -20,7 +20,7 @@ type Info struct {
 
 const DefaultPort uint = 8787                   // Default Bind Port
 const DefaultBindAddress string = "127.0.0.1"   // Default Bind Address
-const DefaultServerAddress string = "127.0.0.1" // Defualt Server Address
+const DefaultRemoteAddress string = "127.0.0.1" // Defualt Server Address
 
 const (
 	ServerMode = 0
@@ -28,6 +28,7 @@ const (
 )
 
 var info Info
+var ServerConnection net.Conn
 
 // funcs map
 // 원격에서 호출가능한 함수들을 등록해놓은 map
@@ -69,7 +70,7 @@ func init() {
 	}
 
 	if info.RemoteAddress == "" {
-		info.RemoteAddress = DefaultBindAddress
+		info.RemoteAddress = DefaultRemoteAddress
 	}
 
 	if info.RemotePort == 0 {
@@ -137,8 +138,13 @@ func requestHandler(c net.Conn) {
 	}
 }
 
-func Connect() {
-
+func ConnectToRemote() {
+	client, err := net.Dial("tcp", info.RemoteAddress+":"+string(info.RemotePort))
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	ServerConnection = client
 }
 
 // CallLocalFunc func
