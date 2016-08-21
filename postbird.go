@@ -1,23 +1,26 @@
 package postbird
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"net"
+	"reflect"
 )
 
+// Info struct
+// PostBird 에서 사용될 내용
 type Info struct {
 	BindPort      uint
 	BindAddress   string
-	ServerPort    uint
-	ServerAddress string
+	RemotePort    uint
+	RemoteAddress string
 	Mode          uint
 }
 
 const DefaultPort uint = 8787                   // Default Bind Port
 const DefaultBindAddress string = "127.0.0.1"   // Default Bind Address
 const DefaultServerAddress string = "127.0.0.1" // Defualt Server Address
-const DefaultMode uint = ServerMode             // Default Mode : ServerMode (Tcp Listen)
 
 const (
 	ServerMode = 0
@@ -26,53 +29,69 @@ const (
 
 var info Info
 
-func PostBird() {
+// funcs map
+// 원격에서 호출가능한 함수들을 등록해놓은 map
+// RegisterFunc 함수로 이 맵에 등록한다
+var funcs map[string]interface{} = make(map[string]interface{})
 
+// SetBindAddress func
+// StartServer로 ServerMode 로 실행할때 바인드될 아이피 주소. ""로 설정하면 모든 NIC에 바인딩된다.
+// 이 함수를 호출하지 않으면 DefaultBindAddress인 127.0.0.1로 바인딩된다.
+func SetBindAddress(BindAddress string) {
+	info.BindAddress = BindAddress
 }
 
-func (c Info) SetMode(Mode uint) {
-	c.Mode = Mode
+// SetBindPort func
+// StartServer로 ServerMode 로 실행할때 바인드될 포트 번호.
+// 이 함수를 호출하지 않으면 DefaultPortd인 8787로 바인딩된다.
+func SetBindPort(BindPort uint) {
+	info.BindPort = BindPort
 }
 
-func (c Info) SetBindAddress(BindAddress string) {
-	c.BindAddress = BindAddress
+// SetRemoteAddress func
+//
+func SetRemoteAddress(ServerAddress string) {
+	info.RemoteAddress = ServerAddress
 }
 
-func (c Info) SetBindPort(BindPort uint) {
-	c.BindPort = BindPort
+func SetRemotePort(ServerPort uint) {
+	info.RemotePort = ServerPort
 }
 
-func (c Info) SetServerAddress(ServerAddress string) {
-	c.ServerAddress = ServerAddress
-}
+func init() {
 
-func (c Info) SetServerPort(ServerPort uint) {
-	c.ServerPort = ServerPort
-}
-
-func (c Info) init() {
-	if c.Mode == ServerMode {
-
-		if c.BindAddress == "" {
-			c.BindAddress = DefaultBindAddress
-		}
-
-		if c.BindPort == 0 {
-			c.BindPort = DefaultPort
-		}
-
-	} else if c.Mode == ClientMode {
-		if c.ServerAddress == "" {
-			c.ServerAddress = DefaultBindAddress
-		}
-
-		if c.ServerPort == 0 {
-			c.ServerPort = DefaultPort
-		}
-
-	} else {
-		log.Println("Mode is not defined")
+	if info.BindAddress == "" {
+		info.BindAddress = DefaultBindAddress
 	}
+
+	if info.BindPort == 0 {
+		info.BindPort = DefaultPort
+	}
+
+	if info.RemoteAddress == "" {
+		info.RemoteAddress = DefaultBindAddress
+	}
+
+	if info.RemotePort == 0 {
+		info.RemotePort = DefaultPort
+	}
+
+}
+
+// RegisterFunc func
+// CallLocalFunc 함수에 의해 실행될 수 있는, 즉 원격에서 호출가능한 함수를 등록하는 함수
+// funcs 맵에 등록되며 이 함수에 등록되지 않은 함수는 원격에서 호출할 수 없다.
+func RegisterFunc(FuncName string, Function interface{}) {
+	funcs[FuncName] = Function
+}
+
+// StartServer func
+// 프로그램을 서버역할로 사용하려면 이 함수를 호출해서 tcp 서버를 시작하면 된다.
+// 시작되면 Binder 함수를 비동기로 호출하여 비동기로 tcp Listen
+// 이 함수가 호출되면 무조건 Mode가 ServerMode 로 바뀐다
+func StartServer() {
+	info.Mode = ServerMode
+	go Binder(info.BindAddress, info.BindPort)
 }
 
 // Binder func
@@ -96,6 +115,8 @@ func Binder(BindAddr string, Port uint) {
 	}
 }
 
+// requestHandler func
+// tcp 연결되었을때 request 핸들러
 func requestHandler(c net.Conn) {
 	data := make([]byte, 4096) // 4096 크기의 바이트 슬라이스 생성
 
@@ -116,10 +137,30 @@ func requestHandler(c net.Conn) {
 	}
 }
 
-func CallRemoteFunc() {
+func Connect() {
 
 }
 
-func CallLocalFunc() {
+// CallLocalFunc func
+// RegisterFunc 로 등록된 함수가 원격에서 함수를 호출했을때
+// 이함수를 통해 실행된다
+func CallLocalFunc(name string, params ...interface{}) (result []reflect.Value, err error) {
+	f := reflect.ValueOf(funcs[name])
+	if len(params) != f.Type().NumIn() {
+		err = errors.New("The number of params is not adapted.")
+		return
+	}
+	in := make([]reflect.Value, len(params))
+	for k, param := range params {
+		in[k] = reflect.ValueOf(param)
+	}
+	result = f.Call(in)
+	return
+}
+
+// CallRemoteFunc func
+// 연결된 (서버)의 함수를 호출하고 싶을때 사용하는 함수
+// json형식으로 변환해서 tcp로 서버에 전달.
+func CallRemoteFunc() {
 
 }
