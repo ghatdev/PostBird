@@ -1,8 +1,10 @@
 package postbird
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"net"
 	"reflect"
@@ -102,7 +104,6 @@ func Binder(BindAddr string, Port uint) {
 	if err != nil {
 		log.Println(err)
 	}
-	defer ln.Close()
 
 	for {
 		conn, err := ln.Accept()
@@ -167,6 +168,22 @@ func CallLocalFunc(name string, params ...interface{}) (result []reflect.Value, 
 // CallRemoteFunc func
 // 연결된 (서버)의 함수를 호출하고 싶을때 사용하는 함수
 // json형식으로 변환해서 tcp로 서버에 전달.
-func CallRemoteFunc() {
+func CallRemoteFunc(FunctionName string, args ...interface{}) {
 
+}
+
+func readFully(conn net.Conn) ([]byte, error) {
+	result := bytes.NewBuffer(nil)
+	var buf [512]byte
+	for {
+		n, err := conn.Read(buf[0:])
+		result.Write(buf[0:n])
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			return nil, err
+		}
+	}
+	return result.Bytes(), nil
 }
