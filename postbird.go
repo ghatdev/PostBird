@@ -8,6 +8,8 @@ import (
 	"log"
 	"net"
 	"reflect"
+
+	"github.com/googollee/go-socket.io"
 )
 
 // Info struct
@@ -95,6 +97,17 @@ func RegisterFunc(FuncName string, Function interface{}) {
 func StartServer() {
 	info.Mode = ServerMode
 	go Binder(info.BindAddress, info.BindPort)
+}
+
+// Listener func
+// ServerMode 일때 tcp대신 socket.io 사용
+func Listener(BindAddr string, Port uint) {
+	server, err := socketio.NewServer(nil)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	server.On("connection", f)
 }
 
 // Binder func
