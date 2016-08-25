@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"math/rand"
 	"net"
 	"net/http"
 	"reflect"
@@ -24,7 +25,9 @@ type Info struct {
 }
 
 type Client struct {
+	Socket     socketio.Socket
 	Connection net.Conn
+	ClientID   string
 }
 
 const DefaultPort uint = 8787                   // Default Bind Port
@@ -116,6 +119,12 @@ func Listener(BindAddr string, Port uint) {
 	}
 
 	server.On("connection", func(so socketio.Socket) {
+		Clients = append(Clients, Client{so, nil, so.Id()})
+
+		so.On("call", func(FunctionName string, args ...string) {
+			CallLocalFunc(FunctionName, args)
+		})
+
 		so.On("disconnection", func() {
 
 		})
@@ -214,4 +223,16 @@ func readFully(conn net.Conn) ([]byte, error) {
 		}
 	}
 	return result.Bytes(), nil
+}
+
+var letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
+
+// RandStringRunes func
+// 랜덤 문자열 생성 함수
+func RandStringRunes(n int) string {
+	b := make([]rune, n)
+	for i := range b {
+		b[i] = letterRunes[rand.Intn(len(letterRunes))]
+	}
+	return string(b)
 }
