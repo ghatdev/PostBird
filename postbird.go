@@ -7,6 +7,7 @@ import (
 	"io"
 	"log"
 	"net"
+	"net/http"
 	"reflect"
 
 	"github.com/googollee/go-socket.io"
@@ -22,6 +23,10 @@ type Info struct {
 	Mode          uint
 }
 
+type Client struct {
+	Connection net.Conn
+}
+
 const DefaultPort uint = 8787                   // Default Bind Port
 const DefaultBindAddress string = "127.0.0.1"   // Default Bind Address
 const DefaultRemoteAddress string = "127.0.0.1" // Defualt Server Address
@@ -33,6 +38,9 @@ const (
 
 var info Info
 var ServerConnection net.Conn
+
+var isConnected bool
+var Clients []Client = make([]Client, 5)
 
 // funcs map
 // 원격에서 호출가능한 함수들을 등록해놓은 map
@@ -107,7 +115,14 @@ func Listener(BindAddr string, Port uint) {
 		log.Fatal(err)
 	}
 
-	server.On("connection", f)
+	server.On("connection", func(so socketio.Socket) {
+		so.On("disconnection", func() {
+
+		})
+	})
+
+	http.Handle("/socket.io/", server)
+	http.Handle("/", http.FileServer(http.Dir("./asset")))
 }
 
 // Binder func
