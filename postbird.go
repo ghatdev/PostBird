@@ -22,6 +22,7 @@ type Info struct {
 	RemotePort    uint
 	RemoteAddress string
 	Mode          uint
+	ServerType    uint
 }
 
 type Client struct {
@@ -33,10 +34,16 @@ type Client struct {
 const DefaultPort uint = 8787                   // Default Bind Port
 const DefaultBindAddress string = "127.0.0.1"   // Default Bind Address
 const DefaultRemoteAddress string = "127.0.0.1" // Defualt Server Address
+const DefaultServerType uint = SocketIO
 
 const (
 	ServerMode = 0
 	ClientMode = 1
+)
+
+const (
+	TCP      = 0
+	SocketIO = 1
 )
 
 var info Info
@@ -74,6 +81,10 @@ func SetRemotePort(ServerPort uint) {
 	info.RemotePort = ServerPort
 }
 
+func SetServerType(ServerType uint) {
+	info.ServerType = ServerType
+}
+
 func init() {
 
 	if info.BindAddress == "" {
@@ -92,6 +103,10 @@ func init() {
 		info.RemotePort = DefaultPort
 	}
 
+	if info.ServerType == 0 {
+		info.ServerType = DefaultServerType
+	}
+
 }
 
 // RegisterFunc func
@@ -105,8 +120,10 @@ func RegisterFunc(FuncName string, Function interface{}) {
 // 프로그램을 서버역할로 사용하려면 이 함수를 호출해서 tcp 서버를 시작하면 된다.
 // 시작되면 Binder 함수를 비동기로 호출하여 비동기로 tcp Listen
 // 이 함수가 호출되면 무조건 Mode가 ServerMode 로 바뀐다
-func StartServer(ServerType int) {
+func StartServer(ServerType uint) {
 	info.Mode = ServerMode
+	info.ServerType = ServerType
+
 	switch ServerType {
 	case 0:
 		go Binder(info.BindAddress, info.BindPort)
