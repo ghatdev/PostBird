@@ -105,9 +105,17 @@ func RegisterFunc(FuncName string, Function interface{}) {
 // 프로그램을 서버역할로 사용하려면 이 함수를 호출해서 tcp 서버를 시작하면 된다.
 // 시작되면 Binder 함수를 비동기로 호출하여 비동기로 tcp Listen
 // 이 함수가 호출되면 무조건 Mode가 ServerMode 로 바뀐다
-func StartServer() {
+func StartServer(ServerType int) {
 	info.Mode = ServerMode
-	go Binder(info.BindAddress, info.BindPort)
+	switch ServerType {
+	case 0:
+		go Binder(info.BindAddress, info.BindPort)
+	case 1:
+		go Listener(info.BindAddress, info.BindPort)
+	default:
+		log.Println("ServerType not match. 0 for TCP, 1 for Socket.io.")
+	}
+
 }
 
 // Listener func
@@ -122,16 +130,30 @@ func Listener(BindAddr string, Port uint) {
 		Clients = append(Clients, Client{so, nil, so.Id()})
 
 		so.On("call", func(FunctionName string, args ...string) {
-			CallLocalFunc(FunctionName, args)
+			go CallLocalFunc(FunctionName, args)
 		})
 
+		var i int
+
 		so.On("disconnection", func() {
+			for i = 0; i < len(Clients); i++ {
+				if so.Id() == Clients[i].ClientID {
+					break
+				}
+			}
+
+			if !(i > len(Clients)) {
+				copy(Clients[i:], Clients[i+1:])
+				Clients[len(Clients)-1] = Client{}
+				Clients = Clients[:len(Clients)-1]
+			}
 
 		})
 	})
 
 	http.Handle("/socket.io/", server)
 	http.Handle("/", http.FileServer(http.Dir("./asset")))
+	http.ListenAndServe(BindAddr, nil)
 }
 
 // Binder func
