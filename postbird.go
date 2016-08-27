@@ -41,6 +41,11 @@ type CallEvent struct {
 	Params       []Any
 }
 
+type CalledEvent struct {
+	FunctionName string
+	Params       json.RawMessage
+}
+
 const DefaultPort uint = 8787                   // Default Bind Port
 const DefaultBindAddress string = "127.0.0.1"   // Default Bind Address
 const DefaultRemoteAddress string = "127.0.0.1" // Defualt Server Address
@@ -193,7 +198,13 @@ func Binder(wg *sync.WaitGroup, BindAddr string, Port uint) {
 	defer wg.Done()
 	var WaitHandler sync.WaitGroup
 
-	ln, err := net.Listen("tcp", BindAddr+":"+fmt.Sprint(Port)) // 전달받은 BindAddr:Port 에 TCP로 바인딩
+	Addr, err := net.ResolveTCPAddr("tcp", BindAddr+":"+fmt.Sprint(Port))
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
+	ln, err := net.ListenTCP("tcp", Addr) // 전달받은 BindAddr:Port 에 TCP로 바인딩
 	if err != nil {
 		log.Println(err)
 		return
@@ -225,12 +236,13 @@ func requestHandler(wg *sync.WaitGroup, c net.Conn) {
 	data := json.NewDecoder(c)
 
 	var FuncWaiter sync.WaitGroup
-	var event CallEvent
+	var event CalledEvent
 
 	for {
 		err := data.Decode(&event)
 		if err != nil {
 			log.Println("Invalid json format")
+			return
 		}
 		FuncWaiter.Add(1)
 		fmt.Println(event.FunctionName)
@@ -307,6 +319,8 @@ func CallRemoteFunc(FunctionName string, args ...Any) {
 				if info.Mode == ServerMode {
 					Clients[i].Connection.Write(call)
 				} else {
+					//encoder := json.NewEncoder(ServerConnection)
+					//encoder.Encode(Event)
 					ServerConnection.Write(call)
 				}
 			}
