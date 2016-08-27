@@ -301,6 +301,8 @@ func CallRemoteFunc(FunctionName string, args ...Any) {
 			*/
 			call, _ := json.Marshal(Event)
 
+			fmt.Println(string(call))
+
 			for i = 0; i < len(Clients); i++ {
 				if info.Mode == ServerMode {
 					Clients[i].Connection.Write(call)
