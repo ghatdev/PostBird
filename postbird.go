@@ -315,15 +315,17 @@ func CallRemoteFunc(FunctionName string, args ...Any) {
 
 			fmt.Println(string(call))
 
-			for i = 0; i < len(Clients); i++ {
-				if info.Mode == ServerMode {
-					Clients[i].Connection.Write(call)
-				} else {
-					//encoder := json.NewEncoder(ServerConnection)
-					//encoder.Encode(Event)
-					ServerConnection.Write(call)
+			if info.Mode == ServerMode {
+				for i = 0; i < len(Clients); i++ {
+					encoder := json.NewEncoder(Clients[i].Connection)
+					encoder.Encode(Event)
 				}
+			} else {
+				encoder := json.NewEncoder(ServerConnection)
+				encoder.Encode(Event)
+				//ServerConnection.Write(call)
 			}
+
 			break
 		case SocketIO:
 			break
