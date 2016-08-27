@@ -3,16 +3,17 @@ Easy communication library for Golang
 
 ## Usage
 ### Quick Start
-run 
+Run this command in bash or cmd or etc.. 
 ```shell
 go get github.com/ghatdev/postbird
 ```
-Add 
+And, add this line 
 ```go
 import "github.com/ghatdev/PostBird"
 ``` 
 in your code
-	
+
+### How to use	
 - Server Mode:  
   - Call RegisterFunc() to register functions.  
   - Call StartServer() to start the server.  
