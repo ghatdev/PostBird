@@ -11,6 +11,7 @@ import (
 	"net"
 	"net/http"
 	"reflect"
+	"time"
 
 	"github.com/googollee/go-socket.io"
 )
@@ -32,7 +33,11 @@ type Client struct {
 	ClientID   string
 }
 
+type Any interface{}
+
 type CallEvent struct {
+	FunctionName string
+	Params       []Any
 }
 
 const DefaultPort uint = 8787                   // Default Bind Port
@@ -193,6 +198,8 @@ func Binder(BindAddr string, Port uint) {
 		}
 		defer conn.Close()
 
+		rand.Seed(time.Now().UnixNano())
+
 		ClientId := RandStringRunes(17)
 		Clients = append(Clients, Client{nil, conn, ClientId})
 
@@ -203,9 +210,6 @@ func Binder(BindAddr string, Port uint) {
 // requestHandler func
 // tcp 연결되었을때 request 핸들러
 func requestHandler(c net.Conn) {
-	encoder := json.NewEncoder(c)
-	decoder := json.NewDecoder(c)
-
 	readFully(c)
 }
 
@@ -221,7 +225,7 @@ func ConnectToRemote() {
 // CallLocalFunc func
 // RegisterFunc 로 등록된 함수가 원격에서 함수를 호출했을때
 // 이함수를 통해 실행된다
-func CallLocalFunc(name string, params ...interface{}) (result []reflect.Value, err error) {
+func CallLocalFunc(name string, params ...Any) (result []reflect.Value, err error) {
 	f := reflect.ValueOf(funcs[name])
 	if len(params) != f.Type().NumIn() {
 		err = errors.New("The number of params is not adapted.")
@@ -238,12 +242,39 @@ func CallLocalFunc(name string, params ...interface{}) (result []reflect.Value, 
 // CallRemoteFunc func
 // 연결된 (서버)의 함수를 호출하고 싶을때 사용하는 함수
 // json형식으로 변환해서 tcp로 서버에 전달.
-func CallRemoteFunc(FunctionName string, args ...interface{}) {
+func CallRemoteFunc(FunctionName string, args ...Any) {
+	var i int
+
 	if Clients[0].ClientID != "" {
 		switch info.Protocol {
 		case TCP:
-			for i := 0; i < len(Clients); i++ {
-				Clients[i].Connection.Write(b)
+			Event := CallEvent{FunctionName, args}
+			/*
+				tmpStr := "{\"funcname\":\"" + FunctionName + "\"" + "\"args\":["
+				for i = 0; i < len(args)-1; i++ {
+					switch args[i].(type) {
+					case string:
+						tmpStr += "\"" + args[i].(string) + "\","
+						break
+					default:
+						tmpStr += args[i].(string) + ","
+					}
+				}
+
+				switch args[i].(type) {
+				case string:
+					tmpStr += "\"" + args[i].(string) + "\""
+					break
+				default:
+					tmpStr += args[i].(string)
+				}
+
+				tmpStr += "]}"
+			*/
+			call, _ := json.Marshal(Event)
+
+			for i = 0; i < len(Clients); i++ {
+				Clients[i].Connection.Write(call)
 			}
 			break
 		case SocketIO:
