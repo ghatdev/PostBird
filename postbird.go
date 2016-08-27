@@ -41,11 +41,6 @@ type CallEvent struct {
 	Params       []Any
 }
 
-type CalledEvent struct {
-	FunctionName string
-	Params       json.RawMessage
-}
-
 const DefaultPort uint = 8787                   // Default Bind Port
 const DefaultBindAddress string = "127.0.0.1"   // Default Bind Address
 const DefaultRemoteAddress string = "127.0.0.1" // Defualt Server Address
@@ -238,7 +233,7 @@ func requestHandler(wg *sync.WaitGroup, c net.Conn) {
 	data := json.NewDecoder(c)
 
 	var FuncWaiter sync.WaitGroup
-	var event CalledEvent
+	var event CallEvent
 
 	for {
 		err := data.Decode(&event)
@@ -246,6 +241,8 @@ func requestHandler(wg *sync.WaitGroup, c net.Conn) {
 			log.Println("Invalid json format")
 			return
 		}
+
+		fmt.Println(event.Params)
 		FuncWaiter.Add(1)
 		go CallLocalFunc(&FuncWaiter, event.FunctionName, event.Params)
 	}
@@ -289,7 +286,7 @@ func CallLocalFunc(wg *sync.WaitGroup, name string, params ...Any) (result []ref
 func CallRemoteFunc(FunctionName string, args ...Any) {
 	var i int
 
-	Event := CallEvent{"test", []Any{}}
+	Event := CallEvent{"test", args}
 
 	switch info.Protocol {
 	case TCP:
