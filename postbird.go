@@ -242,9 +242,8 @@ func requestHandler(wg *sync.WaitGroup, c net.Conn) {
 			return
 		}
 
-		fmt.Println(event.Params)
 		FuncWaiter.Add(1)
-		go CallLocalFunc(&FuncWaiter, event.FunctionName, event.Params)
+		go CallLocalFunc(&FuncWaiter, event.FunctionName, event.Params...)
 	}
 
 	FuncWaiter.Wait()
@@ -286,7 +285,7 @@ func CallLocalFunc(wg *sync.WaitGroup, name string, params ...Any) (result []ref
 func CallRemoteFunc(FunctionName string, args ...Any) {
 	var i int
 
-	Event := CallEvent{"test", args}
+	Event := CallEvent{FunctionName, args}
 
 	switch info.Protocol {
 	case TCP:
