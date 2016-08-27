@@ -2,6 +2,7 @@ package postbird
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -22,7 +23,7 @@ type Info struct {
 	RemotePort    uint
 	RemoteAddress string
 	Mode          uint
-	ServerType    uint
+	Protocol      uint
 }
 
 type Client struct {
@@ -37,7 +38,7 @@ type CallEvent struct {
 const DefaultPort uint = 8787                   // Default Bind Port
 const DefaultBindAddress string = "127.0.0.1"   // Default Bind Address
 const DefaultRemoteAddress string = "127.0.0.1" // Defualt Server Address
-const DefaultServerType uint = SocketIO
+const DefaultProtocol uint = SocketIO
 
 const (
 	ServerMode = 0
@@ -84,8 +85,8 @@ func SetRemotePort(ServerPort uint) {
 	info.RemotePort = ServerPort
 }
 
-func SetServerType(ServerType uint) {
-	info.ServerType = ServerType
+func SetProtocol(Protocol uint) {
+	info.Protocol = Protocol
 }
 
 func init() {
@@ -106,8 +107,8 @@ func init() {
 		info.RemotePort = DefaultPort
 	}
 
-	if info.ServerType == 0 {
-		info.ServerType = DefaultServerType
+	if info.Protocol == 0 {
+		info.Protocol = DefaultProtocol
 	}
 
 }
@@ -123,17 +124,17 @@ func RegisterFunc(FuncName string, Function interface{}) {
 // 프로그램을 서버역할로 사용하려면 이 함수를 호출해서 tcp 서버를 시작하면 된다.
 // 시작되면 Binder 함수를 비동기로 호출하여 비동기로 tcp Listen
 // 이 함수가 호출되면 무조건 Mode가 ServerMode 로 바뀐다
-func StartServer(ServerType uint) {
+func StartServer(Protocol uint) {
 	info.Mode = ServerMode
-	info.ServerType = ServerType
+	info.Protocol = Protocol
 
-	switch ServerType {
+	switch Protocol {
 	case 0:
 		go Binder(info.BindAddress, info.BindPort)
 	case 1:
 		go Listener(info.BindAddress, info.BindPort)
 	default:
-		log.Println("ServerType not match. 0 for TCP, 1 for Socket.io.")
+		log.Println("Protocol not match. 0 for TCP, 1 for Socket.io.")
 	}
 
 }
@@ -202,6 +203,9 @@ func Binder(BindAddr string, Port uint) {
 // requestHandler func
 // tcp 연결되었을때 request 핸들러
 func requestHandler(c net.Conn) {
+	encoder := json.NewEncoder(c)
+	decoder := json.NewDecoder(c)
+
 	readFully(c)
 }
 
@@ -235,7 +239,20 @@ func CallLocalFunc(name string, params ...interface{}) (result []reflect.Value, 
 // 연결된 (서버)의 함수를 호출하고 싶을때 사용하는 함수
 // json형식으로 변환해서 tcp로 서버에 전달.
 func CallRemoteFunc(FunctionName string, args ...interface{}) {
+	if Clients[0].ClientID != "" {
+		switch info.Protocol {
+		case TCP:
+			for i := 0; i < len(Clients); i++ {
+				Clients[i].Connection.Write(b)
+			}
+			break
+		case SocketIO:
+			break
+		default:
+			log.Fatal("Protocol Type not match")
 
+		}
+	}
 }
 
 func readFully(conn net.Conn) ([]byte, error) {
