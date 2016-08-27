@@ -196,6 +196,8 @@ func Listener(wg *sync.WaitGroup, BindAddr string, Port uint) {
 // ServerMode일때 main func
 func Binder(wg *sync.WaitGroup, BindAddr string, Port uint) {
 	defer wg.Done()
+	info.Protocol = TCP
+
 	var WaitHandler sync.WaitGroup
 
 	Addr, err := net.ResolveTCPAddr("tcp", BindAddr+":"+fmt.Sprint(Port))
@@ -245,14 +247,16 @@ func requestHandler(wg *sync.WaitGroup, c net.Conn) {
 			return
 		}
 		FuncWaiter.Add(1)
-		fmt.Println(event.FunctionName)
 		go CallLocalFunc(&FuncWaiter, event.FunctionName, event.Params)
 	}
 
 	FuncWaiter.Wait()
 }
 
-func ConnectToRemote() {
+func ConnectToRemote(Protocol uint) {
+	info.Mode = ClientMode
+	info.Protocol = Protocol
+
 	client, err := net.Dial("tcp", info.RemoteAddress+":"+fmt.Sprint(info.RemotePort))
 	if err != nil {
 		fmt.Println(err)
@@ -285,54 +289,54 @@ func CallLocalFunc(wg *sync.WaitGroup, name string, params ...Any) (result []ref
 func CallRemoteFunc(FunctionName string, args ...Any) {
 	var i int
 
-	if Clients[0].ClientID != "" {
-		switch info.Protocol {
-		case TCP:
-			Event := CallEvent{FunctionName, args}
-			/*
-				tmpStr := "{\"funcname\":\"" + FunctionName + "\"" + "\"args\":["
-				for i = 0; i < len(args)-1; i++ {
-					switch args[i].(type) {
-					case string:
-						tmpStr += "\"" + args[i].(string) + "\","
-						break
-					default:
-						tmpStr += args[i].(string) + ","
-					}
-				}
+	Event := CallEvent{"test", []Any{}}
 
+	switch info.Protocol {
+	case TCP:
+
+		/*
+			tmpStr := "{\"funcname\":\"" + FunctionName + "\"" + "\"args\":["
+			for i = 0; i < len(args)-1; i++ {
 				switch args[i].(type) {
 				case string:
-					tmpStr += "\"" + args[i].(string) + "\""
+					tmpStr += "\"" + args[i].(string) + "\","
 					break
 				default:
-					tmpStr += args[i].(string)
+					tmpStr += args[i].(string) + ","
 				}
+			}
 
-				tmpStr += "]}"
-			*/
-			call, _ := json.Marshal(Event)
+			switch args[i].(type) {
+			case string:
+				tmpStr += "\"" + args[i].(string) + "\""
+				break
+			default:
+				tmpStr += args[i].(string)
+			}
 
-			fmt.Println(string(call))
+			tmpStr += "]}"
+		*/
+		//call, _ := json.Marshal(Event)
 
-			if info.Mode == ServerMode {
+		//fmt.Println(string(call))
+
+		if info.Mode == ServerMode {
+			if Clients[0].ClientID != "" {
 				for i = 0; i < len(Clients); i++ {
 					encoder := json.NewEncoder(Clients[i].Connection)
 					encoder.Encode(Event)
 				}
-			} else {
-				encoder := json.NewEncoder(ServerConnection)
-				encoder.Encode(Event)
-				//ServerConnection.Write(call)
 			}
-
-			break
-		case SocketIO:
-			break
-		default:
-			log.Fatal("Protocol Type not match")
-
+		} else {
+			encoder := json.NewEncoder(ServerConnection)
+			encoder.Encode(Event)
 		}
+
+		break
+	case SocketIO:
+		break
+	default:
+		log.Fatal("Protocol Type not match")
 	}
 }
 
