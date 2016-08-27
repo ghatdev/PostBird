@@ -2,6 +2,17 @@
 Easy communication library for Golang
 
 ## Usage
+### Quick Start
+run 
+```shell
+go get github.com/ghatdev/postbird
+```
+Add 
+```go
+import "github.com/ghatdev/PostBird"
+``` 
+in your code
+	
 - Server Mode:  
   - Call RegisterFunc() to register functions.  
   - Call StartServer() to start the server.  
