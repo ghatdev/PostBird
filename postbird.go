@@ -11,6 +11,7 @@ import (
 	"net"
 	"net/http"
 	"reflect"
+	"sync"
 	"time"
 
 	"github.com/googollee/go-socket.io"
@@ -130,23 +131,27 @@ func RegisterFunc(FuncName string, Function interface{}) {
 // 시작되면 Binder 함수를 비동기로 호출하여 비동기로 tcp Listen
 // 이 함수가 호출되면 무조건 Mode가 ServerMode 로 바뀐다
 func StartServer(Protocol uint) {
+	var wg sync.WaitGroup
+
 	info.Mode = ServerMode
 	info.Protocol = Protocol
 
 	switch Protocol {
-	case 0:
-		go Binder(info.BindAddress, info.BindPort)
-	case 1:
-		go Listener(info.BindAddress, info.BindPort)
+	case TCP:
+		wg.Add(1)
+		go Binder(&wg, info.BindAddress, info.BindPort)
+	case SocketIO:
+		wg.Add(1)
+		go Listener(&wg, info.BindAddress, info.BindPort)
 	default:
 		log.Println("Protocol not match. 0 for TCP, 1 for Socket.io.")
 	}
-
+	wg.Wait()
 }
 
 // Listener func
 // ServerMode 일때 tcp대신 socket.io 사용
-func Listener(BindAddr string, Port uint) {
+func Listener(wg *sync.WaitGroup, BindAddr string, Port uint) {
 	server, err := socketio.NewServer(nil)
 	if err != nil {
 		log.Fatal(err)
@@ -156,7 +161,7 @@ func Listener(BindAddr string, Port uint) {
 		Clients = append(Clients, Client{so, nil, so.Id()})
 
 		so.On("call", func(FunctionName string, args ...string) {
-			go CallLocalFunc(FunctionName, args)
+			//go CallLocalFunc(FunctionName, args)
 		})
 
 		var i int
@@ -184,17 +189,21 @@ func Listener(BindAddr string, Port uint) {
 
 // Binder func
 // ServerMode일때 main func
-func Binder(BindAddr string, Port uint) {
-	ln, err := net.Listen("tcp", BindAddr+":"+string(Port)) // 전달받은 BindAddr:Port 에 TCP로 바인딩
+func Binder(wg *sync.WaitGroup, BindAddr string, Port uint) {
+	defer wg.Done()
+	var WaitHandler sync.WaitGroup
+
+	ln, err := net.Listen("tcp", BindAddr+":"+fmt.Sprint(Port)) // 전달받은 BindAddr:Port 에 TCP로 바인딩
 	if err != nil {
 		log.Println(err)
+		return
 	}
 
 	for {
 		conn, err := ln.Accept()
 		if err != nil {
 			log.Println(err)
-			continue
+			panic(err)
 		}
 		defer conn.Close()
 
@@ -202,19 +211,37 @@ func Binder(BindAddr string, Port uint) {
 
 		ClientId := RandStringRunes(17)
 		Clients = append(Clients, Client{nil, conn, ClientId})
-
-		go requestHandler(conn)
+		WaitHandler.Add(1)
+		go requestHandler(&WaitHandler, conn)
 	}
+
+	WaitHandler.Wait()
 }
 
 // requestHandler func
 // tcp 연결되었을때 request 핸들러
-func requestHandler(c net.Conn) {
-	readFully(c)
+func requestHandler(wg *sync.WaitGroup, c net.Conn) {
+	defer wg.Done()
+	data := json.NewDecoder(c)
+
+	var FuncWaiter sync.WaitGroup
+	var event CallEvent
+
+	for {
+		err := data.Decode(&event)
+		if err != nil {
+			log.Println("Invalid json format")
+		}
+		FuncWaiter.Add(1)
+		fmt.Println(event.FunctionName)
+		go CallLocalFunc(&FuncWaiter, event.FunctionName, event.Params)
+	}
+
+	FuncWaiter.Wait()
 }
 
 func ConnectToRemote() {
-	client, err := net.Dial("tcp", info.RemoteAddress+":"+string(info.RemotePort))
+	client, err := net.Dial("tcp", info.RemoteAddress+":"+fmt.Sprint(info.RemotePort))
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -225,7 +252,8 @@ func ConnectToRemote() {
 // CallLocalFunc func
 // RegisterFunc 로 등록된 함수가 원격에서 함수를 호출했을때
 // 이함수를 통해 실행된다
-func CallLocalFunc(name string, params ...Any) (result []reflect.Value, err error) {
+func CallLocalFunc(wg *sync.WaitGroup, name string, params ...Any) (result []reflect.Value, err error) {
+	defer wg.Done()
 	f := reflect.ValueOf(funcs[name])
 	if len(params) != f.Type().NumIn() {
 		err = errors.New("The number of params is not adapted.")
@@ -274,7 +302,11 @@ func CallRemoteFunc(FunctionName string, args ...Any) {
 			call, _ := json.Marshal(Event)
 
 			for i = 0; i < len(Clients); i++ {
-				Clients[i].Connection.Write(call)
+				if info.Mode == ServerMode {
+					Clients[i].Connection.Write(call)
+				} else {
+					ServerConnection.Write(call)
+				}
 			}
 			break
 		case SocketIO:
