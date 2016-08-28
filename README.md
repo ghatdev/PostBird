@@ -29,19 +29,19 @@ in your code
   package main
 
 import (
-	"PostBird"
-	"fmt"
+		"PostBird"
+		"fmt"
 )
 
 func main() {
-	postbird.RegisterFunc("test", test)
-	postbird.SetBindAddress("0.0.0.0")
-	postbird.StartServer(0)
+		postbird.RegisterFunc("test", test)
+		postbird.SetBindAddress("0.0.0.0")
+		postbird.StartServer(0)
 
 }
 
 func test(a string) {
-	fmt.Println(a)
+		fmt.Println(a)
 }
 ```  
   - As Client :  
@@ -51,8 +51,8 @@ func test(a string) {
 import "PostBird"
 
 func main() {
-	postbird.ConnectToRemote(0)
-	postbird.CallRemoteFunc("test", "abcd")
+		postbird.ConnectToRemote(0)
+		postbird.CallRemoteFunc("test", "abcd")
 }
 ```  
 
