@@ -244,7 +244,7 @@ func Binder(wg *sync.WaitGroup, BindAddr string, Port uint) {
 		go requestHandler(&WaitHandler, conn) // 비동기로 requestHandler 호출
 	}
 
-	WaitHandler.Wait()
+	//WaitHandler.Wait()
 }
 
 // requestHandler func
@@ -256,16 +256,14 @@ func requestHandler(wg *sync.WaitGroup, c net.Conn) {
 	var FuncWaiter sync.WaitGroup
 	var event CallEvent
 
-	for {
-		err := data.Decode(&event)
-		if err != nil {
-			log.Println("Invalid json format")
-			return
-		}
-
-		FuncWaiter.Add(1)
-		go CallLocalFunc(&FuncWaiter, event.FunctionName, event.Params...) // 비동기로 등록된 함수 실행
+	err := data.Decode(&event)
+	if err != nil {
+		log.Println("Invalid json format")
+		return
 	}
+
+	FuncWaiter.Add(1)
+	go CallLocalFunc(&FuncWaiter, event.FunctionName, event.Params...) // 비동기로 등록된 함수 실행
 
 	FuncWaiter.Wait()
 }
@@ -301,16 +299,21 @@ func ConnectToRemote(Protocol uint) {
 // 이함수를 통해 실행된다
 func CallLocalFunc(wg *sync.WaitGroup, name string, params ...Any) (result []reflect.Value, err error) {
 	defer wg.Done()
+
 	f := reflect.ValueOf(funcs[name])
+
 	if len(params) != f.Type().NumIn() {
 		err = errors.New("The number of params is not adapted.")
 		return
 	}
+
 	in := make([]reflect.Value, len(params))
 	for k, param := range params {
 		in[k] = reflect.ValueOf(param)
 	}
+
 	result = f.Call(in)
+
 	return
 }
 
