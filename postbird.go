@@ -240,7 +240,7 @@ func Binder(wg *sync.WaitGroup, BindAddr string, Port uint) {
 
 		ClientID := RandStringRunes(17)
 		Clients = append(Clients, Client{nil, conn, ClientID})
-		WaitHandler.Add(1)
+		//WaitHandler.Add(1)
 		go requestHandler(&WaitHandler, conn) // 비동기로 requestHandler 호출
 	}
 
