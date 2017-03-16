@@ -52,9 +52,9 @@ import "PostBird"
 
 func main() {
 		postbird.ConnectToRemote(0)
-		postbird.CallRemoteFunc("test", "abcd")
+		postbird.CallRemoteFunc("test", "Hello World!")
 }
 ```  
 
   - Result (Server Prompt):  
-    abcd
+    Hello World!
