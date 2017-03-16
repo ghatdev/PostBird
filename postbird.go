@@ -256,16 +256,18 @@ func requestHandler(wg *sync.WaitGroup, c net.Conn) {
 	var FuncWaiter sync.WaitGroup
 	var event CallEvent
 
-	err := data.Decode(&event)
-	if err != nil {
-		log.Println("Invalid json format")
-		return
+	for {
+		err := data.Decode(&event)
+		if err != nil {
+			log.Println("Invalid json format")
+			return
+		}
+
+		FuncWaiter.Add(1)
+		go CallLocalFunc(&FuncWaiter, event.FunctionName, event.Params...) // 비동기로 등록된 함수 실행
+
+		FuncWaiter.Wait()
 	}
-
-	FuncWaiter.Add(1)
-	go CallLocalFunc(&FuncWaiter, event.FunctionName, event.Params...) // 비동기로 등록된 함수 실행
-
-	FuncWaiter.Wait()
 }
 
 // ConnectToRemote func
