@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/ghatdev/PostBird.svg?branch=master)](https://travis-ci.org/ghatdev/PostBird)
+
 # PostBird
 Easy communication library for Golang
 
